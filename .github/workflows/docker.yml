@@ -31,10 +31,11 @@ jobs:
           id: vars
           shell: bash
           run: |
-            TAG=$(git describe --tags --abbrev=0)
-            VERSION="${TAG}"
+            TAG=$(git tag -l | sort -V | tail -n 1)
             BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-            if [ "${TAG}" != "$(git describe --tags --abbrev=1)" ]; then
+            if [ "${BRANCH}" != "stable" ]; then
+              TAG="${BRANCH}"
+            elif [ "${TAG}" != "$(git describe --tags)" ]; then
               TAG="${BRANCH}"
             fi
             echo ::set-output name=tag::$(echo ${TAG})
