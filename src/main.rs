@@ -110,7 +110,9 @@ async fn serve() -> io::Result<()> {
 
         tokio::spawn(async move {
             if let Ok(ws) = accept_async(stream).await {
-                handle_connection(ws).await?;
+                if let Err(e) = handle_connection(ws).await {
+                    error!("I/O error while proxying: {}", e);
+                }
             } else {
                 warn!("Websocket upgrade failed, disconnecting");
             }
