@@ -1,0 +1,21 @@
+[package]
+name = "ao-chat-websocket-proxy"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+env_logger = { version = "0.9", default-features = false, features = ["termcolor", "atty", "humantime"] }
+futures-util = { version = "0.3", default-features = false }
+libc = "0.2"
+log = "0.4"
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "io-util", "net"] }
+tokio-tungstenite = { version = "0.16", default-features = false }
+
+[profile.release]
+codegen-units = 1
+debug = false
+incremental = false
+lto = true
+opt-level = 3
