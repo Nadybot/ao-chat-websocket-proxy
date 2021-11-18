@@ -84,7 +84,11 @@ async fn handle_connection(ws: WebSocketStream<TcpStream>) -> io::Result<()> {
 
     let futures: Vec<JoinHandle<io::Result<()>>> = vec![send_task, receive_task];
 
-    let (_, _, others) = select_all(futures).await;
+    let (result, index, others) = select_all(futures).await;
+
+    let name = if index == 0 { "ws -> tcp" } else { "tcp -> ws" };
+
+    debug!("{} task has finished with result: {:?}", name, result);
 
     for future in others {
         future.abort();
