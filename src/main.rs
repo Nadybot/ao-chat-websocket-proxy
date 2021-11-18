@@ -25,6 +25,9 @@ async fn handle_connection(ws: WebSocketStream<TcpStream>) -> io::Result<()> {
 
     let chat_server_addr =
         env::var("CHAT_SERVER_ADDR").unwrap_or_else(|_| String::from("chat.d1.funcom.com:7105"));
+
+    debug!("Connecting to the chat server at {}", chat_server_addr);
+
     let ao_socket = TcpStream::connect(&chat_server_addr).await?;
     let (mut ao_rx, mut ao_tx) = ao_socket.into_split();
 
