@@ -5,6 +5,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
     runtime::Builder,
+    sync::mpsc::unbounded_channel,
     task::JoinHandle,
 };
 use tokio_tungstenite::{accept_async, tungstenite::Message, WebSocketStream};
@@ -33,17 +34,38 @@ async fn handle_connection(ws: WebSocketStream<TcpStream>) -> io::Result<()> {
 
     debug!("Established chat server connection to {}", chat_server_addr);
 
+    let (ws_sender, mut ws_receiver) = unbounded_channel();
+    let ws_sender_clone = ws_sender.clone();
+
+    // Write the channel messages to the websocket
+    tokio::spawn(async move {
+        while let Some(msg) = ws_receiver.recv().await {
+            if ws_tx.send(Message::Binary(msg)).await.is_err() {
+                break;
+            }
+        }
+    });
+
     // Dump the websocket messages to the TCP stream
     let send_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = ws_rx.next().await {
-            if msg.is_text() || msg.is_binary() {
-                let data = msg.into_data();
+            match msg {
+                Message::Binary(_) | Message::Text(_) => {
+                    let data = msg.into_data();
 
-                trace!("Writing {} bytes to TCP stream", data.len());
+                    trace!("Writing {} bytes to TCP stream", data.len());
 
-                if ao_tx.write_all(&data).await.is_err() {
-                    break;
+                    if ao_tx.write_all(&data).await.is_err() {
+                        break;
+                    }
                 }
+                Message::Ping(payload) => {
+                    if ws_sender.send(payload).is_err() {
+                        break;
+                    }
+                }
+                Message::Close(_) => break,
+                Message::Pong(_) => {}
             }
         }
 
@@ -72,7 +94,7 @@ async fn handle_connection(ws: WebSocketStream<TcpStream>) -> io::Result<()> {
             trace!("Writing {} bytes to websocket stream", full_packet.len());
 
             // Send it to the websocket
-            if ws_tx.send(Message::Binary(full_packet)).await.is_err() {
+            if ws_sender_clone.send(full_packet).is_err() {
                 break;
             }
         }
